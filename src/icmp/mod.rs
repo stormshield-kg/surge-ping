@@ -1,4 +1,5 @@
 use std::fmt;
+use std::num::NonZeroU16;
 
 pub mod icmpv4;
 pub mod icmpv6;
@@ -50,11 +51,11 @@ impl From<u16> for PingIdentifier {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct PingSequence(pub u16);
+pub struct PingSequence(pub NonZeroU16);
 
 impl PingSequence {
     pub fn into_u16(self) -> u16 {
-        self.0
+        self.0.get()
     }
 }
 
@@ -64,8 +65,8 @@ impl fmt::Display for PingSequence {
     }
 }
 
-impl From<u16> for PingSequence {
-    fn from(seq_cnt: u16) -> Self {
+impl From<NonZeroU16> for PingSequence {
+    fn from(seq_cnt: NonZeroU16) -> Self {
         Self(seq_cnt)
     }
 }

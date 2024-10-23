@@ -17,8 +17,6 @@ pub enum SurgeError {
     MalformedPacket(#[from] MalformedPacketError),
     #[error("io error: {0}")]
     IOError(#[from] io::Error),
-    #[error("Request timeout for icmp_seq {seq}")]
-    Timeout { seq: PingSequence },
     #[error("Echo Request packet.")]
     EchoRequestPacket,
     #[error("Network error.")]
@@ -29,6 +27,8 @@ pub enum SurgeError {
         ident: Option<PingIdentifier>,
         seq: PingSequence,
     },
+    #[error("Unsupported sequence number")]
+    UnsupportedSeqNum,
 }
 
 #[derive(Error, Debug)]

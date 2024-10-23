@@ -18,7 +18,6 @@ use tokio::{
     sync::oneshot,
     task::{self, JoinHandle},
 };
-use tracing::debug;
 
 use crate::{
     config::Config,
@@ -94,7 +93,7 @@ impl AsyncSocket {
                     SockType::DGRAM
                 };
 
-                debug!(
+                eprintln!(
                     "error opening {:?} type socket, trying {:?}: {:?}",
                     config.sock_type_hint, new_type, err
                 );
@@ -134,7 +133,7 @@ impl AsyncSocket {
 #[derive(PartialEq, Eq, Hash)]
 struct ReplyToken(IpAddr, Option<PingIdentifier>, PingSequence);
 
-pub(crate) struct Reply {
+pub struct Reply {
     pub timestamp: Instant,
     pub packet: IcmpPacket,
 }
@@ -245,7 +244,7 @@ async fn recv_task(socket: AsyncSocket, reply_map: ReplyMap) {
                 match result {
                     Ok(packet) => packet,
                     Err(err) => {
-                        debug!("error decoding ICMP packet: {:?}", err);
+                        eprintln!("error decoding ICMP packet: {err:?}");
                         continue;
                     }
                 }
@@ -260,8 +259,6 @@ async fn recv_task(socket: AsyncSocket, reply_map: ReplyMap) {
             if let Some(waiter) = reply_map.remove(addr.ip(), ident, packet.get_sequence()) {
                 // If send fails the receiving end has closed. Nothing to do.
                 let _ = waiter.send(Reply { timestamp, packet });
-            } else {
-                debug!("no one is waiting for ICMP packet ({:?})", packet);
             }
         }
     }

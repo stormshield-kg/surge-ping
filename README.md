@@ -10,62 +10,24 @@ addresses to detect, you can easily complete it by creating only one system sock
 
 rust ping libray based on `tokio` + `socket2` + `pnet_packet`.
 
-## Example
-
-simple usage:
-
-```rust
-/*
-Cargo.toml
-
-[dependencies]
-surge-ping = "last version"
-tokio = { version = "1.21.2", features = ["full"] }
-*/
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let payload = [0; 8];
-
-    let (_packet, duration) = surge_ping::ping("127.0.0.1".parse()?, &payload).await?;
-
-    println!("Ping took {:.3?}", duration);
-
-    Ok(())
-}
+## Usage
 
 ```
+Usage: surge-ping [OPTIONS] <HOST>
 
-multi address usage: [multi_ping.rs](https://github.com/kolapapa/surge-ping/blob/main/examples/multi_ping.rs)
+Arguments:
+  <HOST>  Destination host or address
 
-### Ping(ICMP)
-There are three example programs that you can run on your own.
-
-```shell
-$ git clone https://github.com/kolapapa/surge-ping.git
-$ cd surge-ping
-
-
-$ cargo run --example simple -- -h 8.8.8.8 -s 56
-V4(Icmpv4Packet { source: 8.8.8.8, destination: 10.1.40.79, ttl: 53, icmp_type: IcmpType(0), icmp_code: IcmpCode(0), size: 64, real_dest: 8.8.8.8, identifier: 111, sequence: 0 }) 112.36ms
-
-
-$ cargo run --example cmd -- -h google.com -c 5
-PING google.com (172.217.24.238): 56 data bytes
-64 bytes from 172.217.24.238: icmp_seq=0 ttl=115 time=109.902 ms
-64 bytes from 172.217.24.238: icmp_seq=1 ttl=115 time=73.684 ms
-64 bytes from 172.217.24.238: icmp_seq=2 ttl=115 time=65.865 ms
-64 bytes from 172.217.24.238: icmp_seq=3 ttl=115 time=66.328 ms
-64 bytes from 172.217.24.238: icmp_seq=4 ttl=115 time=68.707 ms
-
---- google.com ping statistics ---
-5 packets transmitted, 5 packets received, 0.00% packet loss
-round-trip min/avg/max/stddev = 65.865/76.897/109.902/16.734 ms
+Options:
+  -4                                 Use IPv4
+  -6                                 Use IPv6
+  -i, --interval <INTERVAL>          Wait time in seconds between sending each packet [default: 1.0]
+  -s, --size <SIZE>                  Specify the number of data bytes to be sent [default: 56]
+  -c, --count <COUNT>                Stop after sending <count> ECHO_REQUEST packets [default: 5]
+  -I, --interface <INTERFACE>        Source packets with the given interface ip address
+  -w, --wait-timeout <WAIT_TIMEOUT>  Specify a timeout in seconds, beginning once the last ping is sent [default: 1.0]
+  -h, --help                         Print help
 ```
-
-## Notice
-
-If you are **time sensitive**, please do not use `asynchronous ping program`, because if there are a large number of asynchronous events waiting to wake up, it will cause inaccurate calculation time. You can directly use the `ping command` of the operating system.
 
 ## License
 

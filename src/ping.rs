@@ -1,12 +1,14 @@
 use std::{
     net::{IpAddr, SocketAddr},
+    num::NonZeroU16,
+    sync::atomic::{AtomicU16, Ordering},
     time::{Duration, Instant},
 };
 
-use tokio::time::timeout;
+use tokio::sync::oneshot::Receiver;
 
 use crate::{
-    client::{AsyncSocket, ReplyMap},
+    client::{AsyncSocket, Reply, ReplyMap},
     error::{Result, SurgeError},
     icmp::{icmpv4, icmpv6, IcmpPacket, PingIdentifier, PingSequence},
     is_linux_icmp_socket,
@@ -16,18 +18,18 @@ use crate::{
 pub struct Pinger {
     pub host: IpAddr,
     pub ident: Option<PingIdentifier>,
-    timeout: Duration,
     socket: AsyncSocket,
     reply_map: ReplyMap,
-    last_sequence: Option<PingSequence>,
+    last_sequence: AtomicU16,
 }
 
 impl Drop for Pinger {
     fn drop(&mut self) {
-        if let Some(sequence) = self.last_sequence.take() {
+        if let Some(sequence) = NonZeroU16::new(self.last_sequence.load(Ordering::Relaxed)) {
             // Ensure no reply waiter is left hanging if this pinger is dropped while
             // waiting for a reply.
-            self.reply_map.remove(self.host, self.ident, sequence);
+            self.reply_map
+                .remove(self.host, self.ident, sequence.into());
         }
     }
 }
@@ -48,26 +50,24 @@ impl Pinger {
         Pinger {
             host,
             ident,
-            timeout: Duration::from_secs(2),
             socket,
             reply_map: response_map,
-            last_sequence: None,
+            last_sequence: 0.into(),
         }
     }
 
-    /// The timeout of each Ping, in seconds. (default: 2s)
-    pub fn timeout(&mut self, timeout: Duration) -> &mut Pinger {
-        self.timeout = timeout;
-        self
+    /// Send Ping request with sequence number.
+    pub async fn ping(&self, seq: PingSequence, payload: &[u8]) -> Result<(IcmpPacket, Duration)> {
+        let (send_time, reply_waiter) = self.ping_send(seq, payload).await?;
+        self.ping_recv(send_time, reply_waiter).await
     }
 
-    /// Send Ping request with sequence number.
-    pub async fn ping(
-        &mut self,
+    pub async fn ping_send(
+        &self,
         seq: PingSequence,
         payload: &[u8],
-    ) -> Result<(IcmpPacket, Duration)> {
-        // Register to wait for a reply.
+    ) -> Result<(Instant, Receiver<Reply>)> {
+        // Register to wait for a reply
         let reply_waiter = self.reply_map.new_waiter(self.host, self.ident, seq)?;
 
         // Send actual packet
@@ -77,20 +77,19 @@ impl Pinger {
         }
 
         let send_time = Instant::now();
-        self.last_sequence = Some(seq);
+        self.last_sequence.store(seq.0.get(), Ordering::Relaxed);
 
-        // Wait for reply or timeout.
-        match timeout(self.timeout, reply_waiter).await {
-            Ok(Ok(reply)) => Ok((
-                reply.packet,
-                reply.timestamp.saturating_duration_since(send_time),
-            )),
-            Ok(Err(_err)) => Err(SurgeError::NetworkError),
-            Err(_) => {
-                self.reply_map.remove(self.host, self.ident, seq);
-                Err(SurgeError::Timeout { seq })
-            }
-        }
+        Ok((send_time, reply_waiter))
+    }
+
+    pub async fn ping_recv(
+        &self,
+        send_time: Instant,
+        reply_waiter: Receiver<Reply>,
+    ) -> Result<(IcmpPacket, Duration)> {
+        let reply = reply_waiter.await.map_err(|_| SurgeError::NetworkError)?;
+        let duration = reply.timestamp.saturating_duration_since(send_time);
+        Ok((reply.packet, duration))
     }
 
     /// Send a ping packet (useful, when you don't need a reply).

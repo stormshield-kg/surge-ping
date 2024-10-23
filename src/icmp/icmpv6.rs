@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::net::Ipv6Addr;
+use std::num::NonZeroU16;
 
 use pnet_packet::icmpv6::{self, Icmpv6Code, Icmpv6Type};
 use pnet_packet::Packet;
@@ -54,7 +55,7 @@ impl Default for Icmpv6Packet {
             size: 0,
             real_dest: Ipv6Addr::LOCALHOST,
             identifier: PingIdentifier(0),
-            sequence: PingSequence(0),
+            sequence: PingSequence(NonZeroU16::new(1).unwrap()),
         }
     }
 }
@@ -178,7 +179,11 @@ impl Icmpv6Packet {
                     .size(icmpv6_packet.packet().len())
                     .real_dest(destination)
                     .identifier(identifier.into())
-                    .sequence(sequence.into());
+                    .sequence(
+                        NonZeroU16::new(sequence)
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
                 Ok(packet)
             }
             _ => {
@@ -200,7 +205,11 @@ impl Icmpv6Packet {
                     .icmpv6_code(icmpv6_packet.get_icmpv6_code())
                     .size(icmpv6_packet.packet_size())
                     .identifier(identifier.into())
-                    .sequence(sequence.into());
+                    .sequence(
+                        NonZeroU16::new(sequence)
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
                 Ok(packet)
             }
         }

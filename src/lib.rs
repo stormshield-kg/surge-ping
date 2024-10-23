@@ -4,6 +4,7 @@ mod error;
 mod icmp;
 mod ping;
 
+use std::num::NonZeroU16;
 use std::{net::IpAddr, time::Duration};
 
 pub use client::{AsyncSocket, Client};
@@ -15,16 +16,11 @@ pub use icmp::{
 pub use ping::Pinger;
 use rand::random;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ICMP {
+    #[default]
     V4,
     V6,
-}
-
-impl Default for ICMP {
-    fn default() -> Self {
-        ICMP::V4
-    }
 }
 
 /// Shortcut method to ping address.
@@ -53,6 +49,7 @@ pub async fn ping(host: IpAddr, payload: &[u8]) -> Result<(IcmpPacket, Duration)
         IpAddr::V6(_) => Config::builder().kind(ICMP::V6).build(),
     };
     let client = Client::new(&config)?;
-    let mut pinger = client.pinger(host, PingIdentifier(random())).await;
-    pinger.ping(PingSequence(0), payload).await
+    let pinger = client.pinger(host, PingIdentifier(random())).await;
+    let seq = PingSequence(NonZeroU16::new(1).unwrap());
+    pinger.ping(seq, payload).await
 }

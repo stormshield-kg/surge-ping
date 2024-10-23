@@ -1,6 +1,7 @@
 use socket2::Type as SockType;
 use std::convert::TryInto;
 use std::net::Ipv4Addr;
+use std::num::NonZeroU16;
 
 use pnet_packet::icmp::{self, IcmpCode, IcmpType};
 use pnet_packet::Packet;
@@ -67,7 +68,7 @@ impl Default for Icmpv4Packet {
             size: 0,
             real_dest: Ipv4Addr::new(127, 0, 0, 1),
             identifier: PingIdentifier(0),
-            sequence: PingSequence(0),
+            sequence: PingSequence(NonZeroU16::new(1).unwrap()),
         }
     }
 }
@@ -199,7 +200,11 @@ impl Icmpv4Packet {
                     .size(icmp_packet.packet().len())
                     .real_dest(ipv4_packet.get_source())
                     .identifier(icmp_packet.get_identifier().into())
-                    .sequence(icmp_packet.get_sequence_number().into());
+                    .sequence(
+                        NonZeroU16::new(icmp_packet.get_sequence_number())
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
             }
             icmp::IcmpTypes::EchoRequest => return Err(SurgeError::EchoRequestPacket),
             _ => {
@@ -226,7 +231,11 @@ impl Icmpv4Packet {
                     .size(icmp_packet.packet_size())
                     .real_dest(real_ip_packet.get_destination())
                     .identifier(identifier.into())
-                    .sequence(sequence.into());
+                    .sequence(
+                        NonZeroU16::new(sequence)
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
             }
         }
 
@@ -251,7 +260,11 @@ impl Icmpv4Packet {
                     .size(icmp_packet.packet().len())
                     .real_dest(src_addr)
                     .identifier(icmp_packet.get_identifier().into())
-                    .sequence(icmp_packet.get_sequence_number().into());
+                    .sequence(
+                        NonZeroU16::new(icmp_packet.get_sequence_number())
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
             }
             icmp::IcmpTypes::EchoRequest => return Err(SurgeError::EchoRequestPacket),
             _ => {
@@ -278,7 +291,11 @@ impl Icmpv4Packet {
                     .size(icmp_packet.packet_size())
                     .real_dest(real_ip_packet.get_destination())
                     .identifier(identifier.into())
-                    .sequence(sequence.into());
+                    .sequence(
+                        NonZeroU16::new(sequence)
+                            .ok_or_else(|| SurgeError::UnsupportedSeqNum)?
+                            .into(),
+                    );
             }
         }
 

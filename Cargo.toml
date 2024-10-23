@@ -11,27 +11,30 @@ keywords = ["tokio", "icmp", "ping"]
 categories = ["network-programming", "asynchronous"]
 
 [dependencies]
-hex = "0.4.3"
-parking_lot = "0.12.1"
-pnet_packet = "0.34"
-rand = "0.8.5"
-socket2 = { version = "0.5.6", features = ["all"] }
-thiserror = "1.0.57"
-tokio = { version = "1.36", features = ["time", "sync", "net", "rt"] }
-tracing = "0.1.40"
-
+clap = { version = "4.5.20", default-features = false, features = [
+    "color",
+    "derive",
+    "error-context",
+    "help",
+    "std",
+    "suggestions",
+    "usage",
+] }
+futures = { version = "0.3.31", default-features = false, features = ["std"] }
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
+parking_lot = { version = "0.12.3", default-features = false }
+pnet_packet = { version = "0.35", default-features = false, features = ["std"] }
+rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"] }
+socket2 = { version = "0.5.7", default-features = false, features = ["all"] }
+thiserror = { version = "1.0.64", default-features = false }
+tokio = { version = "1.40", default-features = false, features = [
+    "macros",
+    "net",
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }
 
 [dev-dependencies]
-structopt = "0.3.26"
-pretty_env_logger = "0.4.0"
-tokio = { version = "1", features = ["full"] }
-futures = "0.3.25"
-
-[[example]]
-name = "simple"
-
-[[example]]
-name = "cmd"
-
-[[example]]
-name = "multi_ping"
+hex = { version = "0.4.3", default-features = false }
